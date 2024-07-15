@@ -1,8 +1,0 @@
-build/
-.cache/
-docker-compose.override.yml
-.env
-neo4j_db/
-*.csv
-*.out
-
