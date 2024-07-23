@@ -7,7 +7,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(PkgConfig REQUIRED)
 find_package(re2 REQUIRED)
 
 
