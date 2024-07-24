@@ -62,10 +62,13 @@ void MySaxParser::on_end_element(const xmlpp::ustring & /* name */) {
 void MySaxParser::on_characters(const xmlpp::ustring &text) {
     if (nextElement == TITLE) {
         std::string title = text;
-        formatLink(title);
+        std::string titleLower = text;
 
-        page.title = page.title + title;
-        page.titleCaps = page.titleCaps + text; // Undergoes no formatting
+        formatLink(titleLower, true);
+        formatLink(title, false);
+
+        page.title = page.title + titleLower;
+        page.titleCaps = page.titleCaps + title; // Undergoes no formatting
 
     } else if (nextElement == CONTENT) {
         content = content + text;
@@ -90,9 +93,10 @@ inline bool MySaxParser::stringReplace(std::string &string, const std::string &o
     return true;
 }
 
-inline void MySaxParser::formatLink(std::string &str) {
+inline void MySaxParser::formatLink(std::string &str, bool lower) {
     // Convert to lower case
-    transform(str.begin(), str.end(), str.begin(), ::tolower);
+    if (lower)
+        transform(str.begin(), str.end(), str.begin(), ::tolower);
 
     // Replace double quotes with single quotes
     std::replace(str.begin(), str.end(), '\"', '\'');
@@ -139,7 +143,7 @@ void MySaxParser::extractAllLinks() {
         std::string subStr(str.begin(), find(str.begin(), str.end(), '|'));
         std::string subStr2(subStr.begin(), find(subStr.begin(), subStr.end(), '#'));
 
-        formatLink(subStr2);
+        formatLink(subStr2, true);
 
         page.links.push_back(subStr2);
     }

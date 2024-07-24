@@ -33,7 +33,7 @@ class MySaxParser : public xmlpp::SaxParser {
 
     void extractAllLinks();
     void OutputPageCount();
-    void formatLink(std::string &str);
+    void formatLink(std::string &str, bool lower);
     bool stringReplace(std::string &string, const std::string &oldString, const std::string &newString);
 
   protected:
