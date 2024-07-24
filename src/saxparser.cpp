@@ -65,6 +65,7 @@ void MySaxParser::on_characters(const xmlpp::ustring &text) {
         formatLink(title);
 
         page.title = page.title + title;
+        page.titleCaps = page.titleCaps + text; // Undergoes no formatting
 
     } else if (nextElement == CONTENT) {
         content = content + text;

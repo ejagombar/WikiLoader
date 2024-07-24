@@ -8,6 +8,7 @@
 
 struct Page {
     std::string title;
+    std::string titleCaps;
     bool redirect = false;
     std::vector<std::string> links;
 };

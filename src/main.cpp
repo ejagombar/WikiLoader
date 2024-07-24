@@ -39,7 +39,10 @@ void csvWriter(TSQueue<std::vector<Page>> &qIn, std::ofstream &nodeFile, std::of
             }
 
             linkFile << linkStr << std::flush;
-            nodeFile << "\"" << page.title << "\"" << std::endl;
+            if (page.redirect)
+                nodeFile << "\"" + page.title + "\",\"" + page.titleCaps + "\",REDIRECT" << std::endl;
+            else
+                nodeFile << "\"" + page.title + "\",\"" + page.titleCaps + "\",PAGE" << std::endl;
         }
     }
 }
@@ -94,7 +97,7 @@ void parseFileParallel(std::string filepath) {
     std::atomic<bool> processKeepAlive = true;
     std::atomic<bool> writerKeepAlive = true;
 
-    CSVFileNodes << "pageName:ID" << std::endl;
+    CSVFileNodes << "pageName:ID,title,:LABEL" << std::endl;
     CSVFileLinks << ":START_ID,:END_ID,:TYPE" << std::endl;
 
     std::vector<std::thread> processorThreads;
