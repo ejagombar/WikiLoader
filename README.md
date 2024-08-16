@@ -1,8 +1,7 @@
 # WikiMapper XML to Neo4j Converter
 This project takes a Wikipedia XML dump file and converts it to a format readable by Neo4j-Admin to import it into a Neo4j database.
 
-
-
+![g52](https://github.com/user-attachments/assets/46491544-9b49-490f-9b08-098ef8c5fb87)
 
 # Benchmarks and Testing
 
