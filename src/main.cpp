@@ -1,6 +1,6 @@
-#include "TSQueue.h"
-#include "progress.h"
-#include "saxparser.h"
+#include "TSQueue.hpp"
+#include "progress.hpp"
+#include "saxparser.hpp"
 
 #include <cstdlib>
 #include <iostream>
