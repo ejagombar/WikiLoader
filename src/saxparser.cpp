@@ -46,7 +46,7 @@ void MySaxParser::on_end_element(const xmlpp::ustring & /* name */) {
     count++;
 
     if (depth == 2) {
-        // extractAllLinks();
+        extractAllLinks();
 
         if ((page.title.size() > 0) && !RE2::PartialMatch(page.title, "^.+:")) {
             pages.push_back(page);

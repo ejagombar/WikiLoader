@@ -9,8 +9,7 @@
 #include <stdexcept>
 #include <thread>
 
-void pageProcessor(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut,
-                   std::atomic<bool> &keepAlive) {
+void pageProcessor(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std::atomic<bool> &keepAlive) {
     MySaxParser parser;
 
     while (keepAlive.load() || !qIn.empty()) {
@@ -39,13 +38,15 @@ void csvWriter(TSQueue<std::vector<Page>> &qIn, std::ofstream &nodeFile, std::of
                 linkStr = linkStr + "\"" + page.title + "\",\"" + x + "\",LINK\n";
             }
 
-            linkFile << linkStr << std::flush;
+            linkFile << linkStr;
             if (page.redirect)
-                nodeFile << "\"" + page.title + "\",\"" + page.titleCaps + "\",REDIRECT"
-                         << std::endl;
+                nodeFile << "\"" + page.title + "\",\"" + page.titleCaps + "\",REDIRECT\n";
             else
-                nodeFile << "\"" + page.title + "\",\"" + page.titleCaps + "\",PAGE" << std::endl;
+                nodeFile << "\"" + page.title + "\",\"" + page.titleCaps + "\",PAGE\n";
         }
+
+        nodeFile << std::flush;
+        linkFile << std::flush;
     }
 }
 
@@ -104,12 +105,11 @@ void parseFileParallel(std::string filepath) {
 
     std::vector<std::thread> processorThreads;
     for (int i = 0; i < threadCount; ++i) {
-        processorThreads.emplace_back(pageProcessor, std::ref(qIn), std::ref(qOut),
-                                      std::ref(processKeepAlive));
+        processorThreads.emplace_back(pageProcessor, std::ref(qIn), std::ref(qOut), std::ref(processKeepAlive));
     }
 
-    std::thread writerThread(csvWriter, std::ref(qOut), std::ref(CSVFileNodes),
-                             std::ref(CSVFileLinks), std::ref(writerKeepAlive));
+    std::thread writerThread(csvWriter, std::ref(qOut), std::ref(CSVFileNodes), std::ref(CSVFileLinks),
+                             std::ref(writerKeepAlive));
 
     xmlReader(qIn, qOut, filepath);
 
