@@ -50,23 +50,45 @@ void csvWriter(TSQueue<std::vector<Page>> &qIn, std::ofstream &nodeFile, std::of
     }
 }
 
-void xmlReader(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std::string &filepath) {
+void xmlReader(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std::string &filepath,
+               Progress *progress = nullptr) {
     const int maxInputQueueSize = 5;
     const int pagesPerQueueItem = 400;
-    const int wikipediaPages = 23603280;
     const int readThreadSleepTimeMs = 25;
 
-    Progress progress(wikipediaPages);
     int pageCount(0);
+    size_t totalContentSize = 0;
     std::string output("<mediawiki>");
     xmlpp::TextReader reader(filepath);
 
+    // Get file size
+    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
+    std::streamsize fileSize = 0;
+    if (file.is_open()) {
+        fileSize = file.tellg();
+        file.close();
+    }
+
     while (reader.read()) {
         if (reader.get_name() == "page") {
-            output += reader.read_outer_xml();
-
+            std::string pageXml = reader.read_outer_xml();
+            output += pageXml;
             pageCount++;
-            progress.increment();
+
+            // Track content size
+            totalContentSize += pageXml.size();
+
+            if (progress) {
+                progress->increment();
+
+                // Simple content-based progress
+                if (fileSize > 0) {
+                    // This will be conservative since we only count page content, not full XML structure
+                    double contentProgress = std::min(95.0, // Cap at 95% since we don't count XML overhead
+                                                      (static_cast<double>(totalContentSize) / fileSize) * 100.0);
+                    progress->setFileProgress(contentProgress);
+                }
+            }
 
             if (pageCount >= pagesPerQueueItem) {
                 output += "\n</mediawiki>";
@@ -80,8 +102,12 @@ void xmlReader(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std:
             std::this_thread::sleep_for(std::chrono::milliseconds(readThreadSleepTimeMs));
         }
     }
-}
 
+    if (pageCount > 0) {
+        output += "\n</mediawiki>";
+        qIn.push(output);
+    }
+}
 void parseFileParallel(std::string filepath) {
     const int threadCount = 16;
 
@@ -100,6 +126,9 @@ void parseFileParallel(std::string filepath) {
     std::atomic<bool> processKeepAlive = true;
     std::atomic<bool> writerKeepAlive = true;
 
+    // Create progress tracker (no parameters needed now)
+    Progress progress;
+
     CSVFileNodes << "pageName:ID,title,:LABEL" << std::endl;
     CSVFileLinks << ":START_ID,:END_ID,:TYPE" << std::endl;
 
@@ -111,7 +140,8 @@ void parseFileParallel(std::string filepath) {
     std::thread writerThread(csvWriter, std::ref(qOut), std::ref(CSVFileNodes), std::ref(CSVFileLinks),
                              std::ref(writerKeepAlive));
 
-    xmlReader(qIn, qOut, filepath);
+    // Pass progress to xmlReader
+    xmlReader(qIn, qOut, filepath, &progress);
 
     processKeepAlive = false;
     for (auto &t : processorThreads) {
@@ -120,6 +150,9 @@ void parseFileParallel(std::string filepath) {
 
     writerKeepAlive = false;
     writerThread.join();
+
+    // Signal completion
+    progress.finish();
 
     CSVFileLinks.close();
     CSVFileNodes.close();
