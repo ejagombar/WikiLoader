@@ -20,7 +20,7 @@ WikiLoader processes 100GB+ Wikipedia XML dumps, converting them to two CSV file
 ```bash
 git clone https://github.com/Microsoft/vcpkg.git
 cd vcpkg
-./bootstrap-vcpkg.sh    # Linux/macOS
+./bootstrap-vcpkg.sh     # Linux/macOS
 # ./bootstrap-vcpkg.bat  # Windows
 ```
 
@@ -28,9 +28,6 @@ cd vcpkg
 ```bash
 # Ubuntu/Debian
 sudo apt update && sudo apt install cmake
-
-# macOS with Homebrew
-brew install cmake
 
 # Or download from https://cmake.org/download/
 ```
