@@ -7,13 +7,20 @@
 #include <libxml++/libxml++.h>
 #include <libxml++/parsers/textreader.h>
 #include <stdexcept>
+#include <sys/types.h>
 #include <thread>
 
 void pageProcessor(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std::atomic<bool> &keepAlive) {
     MySaxParser parser;
 
     while (keepAlive.load() || !qIn.empty()) {
-        parser.parse_memory(qIn.pop());
+        std::string chunk;
+
+        if (!qIn.pop(chunk)) {
+            break;
+        }
+
+        parser.parse_memory(chunk);
         qOut.push(parser.getPages());
         parser.clear();
     }
@@ -23,18 +30,19 @@ void csvWriter(TSQueue<std::vector<Page>> &qIn, std::ofstream &nodeFile, std::of
                std::atomic<bool> &keepAlive) {
     std::string linkStr;
     while (keepAlive.load() || !qIn.empty()) {
-        if (qIn.empty()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(25));
-            continue;
+        std::vector<Page> pages;
+
+        if (!qIn.pop(pages)) {
+            break;
         }
 
-        for (Page page : qIn.pop()) {
+        for (const Page &page : pages) {
             if (page.title.size() == 0) {
                 continue;
             }
 
             linkStr.clear();
-            for (std::string x : page.links) {
+            for (const auto &x : page.links) {
                 linkStr = linkStr + "\"" + page.title + "\",\"" + x + "\",LINK\n";
             }
 
@@ -56,16 +64,19 @@ void xmlReader(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std:
     const int pagesPerQueueItem = 400;
     const int readThreadSleepTimeMs = 25;
 
-    int pageCount(0);
-    size_t totalContentSize = 0;
+    int pageCount = 0;
+    int totalPagesProcessed = 0;
+    int pagesSinceLastUpdate = 0;
+
     std::string output("<mediawiki>");
     xmlpp::TextReader reader(filepath);
 
-    // Get file size
     std::ifstream file(filepath, std::ios::binary | std::ios::ate);
-    std::streamsize fileSize = 0;
+    double fileSize = 0;
+    double totalContentSize = 0;
+
     if (file.is_open()) {
-        fileSize = file.tellg();
+        fileSize = static_cast<double>(file.tellg());
         file.close();
     }
 
@@ -75,19 +86,15 @@ void xmlReader(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std:
             output += pageXml;
             pageCount++;
 
-            // Track content size
+            totalPagesProcessed++;
+            pagesSinceLastUpdate++;
+
+            // Track total content processed
             totalContentSize += pageXml.size();
 
             if (progress) {
                 progress->increment();
-
-                // Simple content-based progress
-                if (fileSize > 0) {
-                    // This will be conservative since we only count page content, not full XML structure
-                    double contentProgress = std::min(95.0, // Cap at 95% since we don't count XML overhead
-                                                      (static_cast<double>(totalContentSize) / fileSize) * 100.0);
-                    progress->setFileProgress(contentProgress);
-                }
+                progress->setFileProgress((totalContentSize / fileSize) * 100);
             }
 
             if (pageCount >= pagesPerQueueItem) {
@@ -107,9 +114,14 @@ void xmlReader(TSQueue<std::string> &qIn, TSQueue<std::vector<Page>> &qOut, std:
         output += "\n</mediawiki>";
         qIn.push(output);
     }
+
+    if (progress) {
+        progress->setFileProgress(100.0);
+    }
 }
+
 void parseFileParallel(std::string filepath) {
-    const int threadCount = 16;
+    const int threadCount = 16; // TODO: Make this dynamic
 
     const char *linksFileName = "links.csv";
     const char *nodesFileName = "nodes.csv";
@@ -144,11 +156,14 @@ void parseFileParallel(std::string filepath) {
     xmlReader(qIn, qOut, filepath, &progress);
 
     processKeepAlive = false;
+    qIn.setFinished();
+
     for (auto &t : processorThreads) {
         t.join();
     }
 
     writerKeepAlive = false;
+    qOut.setFinished();
     writerThread.join();
 
     // Signal completion
@@ -165,7 +180,7 @@ int main(int argc, char *argv[]) {
         if (argc > 1) {
             filepath = argv[1];
         } else {
-            throw std::invalid_argument("No file provided");
+            throw std::invalid_argument("No Wikipedia XML dump file provided");
         }
 
         parseFileParallel(filepath);

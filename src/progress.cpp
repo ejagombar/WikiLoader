@@ -1,4 +1,5 @@
 #include "progress.hpp"
+#include <algorithm>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
@@ -17,9 +18,7 @@ void Progress::increment() {
 }
 
 void Progress::setFileProgress(double percentage) {
-    if (percentage >= 0.0 && percentage <= 100.0) {
-        fileProgressPercentage = percentage;
-    }
+    fileProgressPercentage = std::max(std::min(percentage, 100.0), 0.0);
 }
 
 void Progress::finish() { runOutputThread = false; }
