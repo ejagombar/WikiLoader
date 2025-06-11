@@ -1,7 +1,6 @@
 {
-  "dependencies": [
-    "fmt",
-    "libxmlpp",
-    "re2"
-  ]
+    "dependencies": [
+        "libxmlpp",
+        "re2"
+    ]
 }
